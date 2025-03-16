@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from scripts.optimization import calculate_farm_metrics, find_optimal_speed, calculate_tractors_for_speed
 
 def calculate_farm_metrics(tractor_count, operating_speed, working_hours, 
                           implement_width, field_efficiency, fuel_cost_per_liter):

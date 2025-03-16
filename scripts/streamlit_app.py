@@ -1,6 +1,14 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 from pulp import LpProblem, LpVariable, LpMinimize, LpStatus, value
+import sys  
+import os  
+
+sys.path.append(os.path.abspath("scripts"))  
+from optimization import calculate_farm_metrics, find_optimal_speed, calculate_tractors_for_speed
+
+
+
 
 def create_optimization_model(fuel_cost, max_fuel, max_tractors, coverage_per_tractor, fuel_per_tractor):
     model = LpProblem("Farm_Optimization", LpMinimize)
