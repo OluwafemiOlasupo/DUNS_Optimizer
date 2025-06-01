@@ -15,18 +15,13 @@
      - Fuel consumption estimates.
      - Total operational time.
 
-3. **Data Visualizations**:
-   - **Speed vs Area Coverage**: Analyze how speed affects field capacity.
-   - **Speed vs Cost**: Understand fuel cost trends for different speeds.
-   - Interactive plots for clear decision-making.
-
-4. **User-Friendly Interface**:
+3. **User-Friendly Interface**:
    - Simple input sliders for key parameters like efficiency, speed range, and fuel costs.
    - Detailed results displayed in real-time.
 
 ---
 
-## 🚀 **Getting Started**
+## 🚀 **Getting Started**: Access the app at https://dunsoptimizer-7hhefcgkd8oc4tuuf4fu9n.streamlit.app/
 
 ### **1. Prerequisites**
 - **Python 3.8 or later** is required.
