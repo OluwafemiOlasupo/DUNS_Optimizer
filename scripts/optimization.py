@@ -5,15 +5,69 @@ import numpy as np
 
 # Operation-specific fuel consumption data (L/ha at reference speed)
 OPERATION_FUEL_DATA = {
-    "Ploughing (Moldboard/Disc)": {"base": 35, "range": "25-45", "reference_speed": 5},
-    "Harrowing (Disc/Tine)": {"base": 15, "range": "10-20", "reference_speed": 6},
-    "Rotavating/Rotary Tillage": {"base": 27.5, "range": "20-35", "reference_speed": 4},
-    "Ridging/Bed Formation": {"base": 15, "range": "10-20", "reference_speed": 5},
-    "Planting/Seeding": {"base": 5.5, "range": "3-8", "reference_speed": 6},
-    "Spraying": {"base": 2, "range": "1-3", "reference_speed": 8},
-    "Fertilizer Spreading": {"base": 2, "range": "1-3", "reference_speed": 8},
-    "Harvesting (Combine)": {"base": 22.5, "range": "15-30", "reference_speed": 4},
-    "Transport (Field to Yard)": {"base": 12.5, "range": "5-20", "reference_speed": 10},
+    "Ploughing (Moldboard/Disc)": {
+        "base": 35, 
+        "range": "25-45", 
+        "reference_speed": 5,
+        "speed_range": "4-6",
+        "remarks": "Deep tillage; slower speeds reduce slippage and wear."
+    },
+    "Harrowing (Disc/Tine)": {
+        "base": 15, 
+        "range": "10-20", 
+        "reference_speed": 7,
+        "speed_range": "6-8",
+        "remarks": "Second pass after ploughing; moderate depth."
+    },
+    "Rotavating/Rotary Tillage": {
+        "base": 27.5, 
+        "range": "20-35", 
+        "reference_speed": 4,
+        "speed_range": "3-5",
+        "remarks": "High PTO load; speed kept low for effective soil pulverization."
+    },
+    "Ridging/Bed Formation": {
+        "base": 15, 
+        "range": "10-20", 
+        "reference_speed": 6,
+        "speed_range": "5-7",
+        "remarks": "Depends on ridge height and implement width."
+    },
+    "Planting/Seeding": {
+        "base": 5.5, 
+        "range": "3-8", 
+        "reference_speed": 5,
+        "speed_range": "4-6",
+        "remarks": "Controlled, uniform seed placement."
+    },
+    "Spraying": {
+        "base": 2, 
+        "range": "1-3", 
+        "reference_speed": 8,
+        "speed_range": "6-10",
+        "remarks": "High speed possible; low drawbar load."
+    },
+    "Fertilizer Spreading": {
+        "base": 2, 
+        "range": "1-3", 
+        "reference_speed": 10,
+        "speed_range": "8-12",
+        "remarks": "Uniform distribution; wide swath width increases efficiency."
+    },
+    "Harvesting (Combine)": {
+        "base": 22.5, 
+        "range": "15-30", 
+        "reference_speed": 4.5,
+        "speed_range": "3-6",
+        "remarks": "Slower speeds maintain threshing efficiency and reduce grain loss."
+    },
+    "Transport (Field to Yard)": {
+        "base": 12.5, 
+        "range": "5-20", 
+        "reference_speed": 15,
+        "speed_range": "10-20",
+        "remarks": "Depends on load, terrain, and road condition."
+    },
 }
 
 def calculate_fuel_consumption(operation_type, operating_speed):
@@ -197,8 +251,10 @@ def main():
     
     # Show fuel consumption range for selected operation
     op_data = OPERATION_FUEL_DATA[operation_type]
-    st.sidebar.info(f"📊 **Typical fuel range:** {op_data['range']} L/ha\n\n"
-                   f"⚙️ **Reference speed:** {op_data['reference_speed']} km/hr")
+    st.sidebar.info(f"📊 **Fuel range:** {op_data['range']} L/ha\n\n"
+                   f"⚙️ **Reference speed:** {op_data['reference_speed']} km/hr\n\n"
+                   f"🎯 **Recommended speed:** {op_data['speed_range']} km/hr\n\n"
+                   f"💡 *{op_data['remarks']}*")
     
     tractor_count = st.sidebar.number_input("Number of tractors", min_value=1, max_value=10, value=5)
     target_hectares = st.sidebar.number_input("Target area to cover (hectares)", min_value=1.0, max_value=100.0, value=15.0)
@@ -283,13 +339,15 @@ def main():
         fuel_df = pd.DataFrame([
             {
                 "Operation": op,
-                "Typical Range (L/ha)": data["range"],
-                "Base Consumption (L/ha)": data["base"],
-                "Reference Speed (km/hr)": data["reference_speed"]
+                "Fuel Range (L/ha)": data["range"],
+                "Base (L/ha)": data["base"],
+                "Reference Speed (km/h)": data["reference_speed"],
+                "Typical Speed Range (km/h)": data["speed_range"],
+                "Remarks": data["remarks"]
             }
             for op, data in OPERATION_FUEL_DATA.items()
         ])
-        st.dataframe(fuel_df, use_container_width=True)
+        st.dataframe(fuel_df, use_container_width=True, hide_index=True)
 
 if __name__ == "__main__":
     main()
