@@ -3,18 +3,45 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-def calculate_farm_metrics(tractor_count, operating_speed, working_hours, 
-                          implement_width, field_efficiency, fuel_cost_per_liter):
+# Operation-specific fuel consumption data (L/ha at reference speed)
+OPERATION_FUEL_DATA = {
+    "Ploughing (Moldboard/Disc)": {"base": 35, "range": "25-45", "reference_speed": 5},
+    "Harrowing (Disc/Tine)": {"base": 15, "range": "10-20", "reference_speed": 6},
+    "Rotavating/Rotary Tillage": {"base": 27.5, "range": "20-35", "reference_speed": 4},
+    "Ridging/Bed Formation": {"base": 15, "range": "10-20", "reference_speed": 5},
+    "Planting/Seeding": {"base": 5.5, "range": "3-8", "reference_speed": 6},
+    "Spraying": {"base": 2, "range": "1-3", "reference_speed": 8},
+    "Fertilizer Spreading": {"base": 2, "range": "1-3", "reference_speed": 8},
+    "Harvesting (Combine)": {"base": 22.5, "range": "15-30", "reference_speed": 4},
+    "Transport (Field to Yard)": {"base": 12.5, "range": "5-20", "reference_speed": 10},
+}
+
+def calculate_fuel_consumption(operation_type, operating_speed):
     """
-    Calculate farm operation metrics based on input parameters.
+    Calculate fuel consumption per hectare based on operation type and speed.
     
     Args:
-        tractor_count: Number of tractors to use
+        operation_type: Type of field operation
         operating_speed: Speed in km/hr
-        working_hours: Hours in workday
-        implement_width: Width of the implement in meters
-        field_efficiency: Efficiency factor (0.0 to 1.0)
-        fuel_cost_per_liter: Cost of fuel in Naira per liter
+    
+    Returns:
+        Fuel consumption in liters per hectare
+    """
+    operation_data = OPERATION_FUEL_DATA[operation_type]
+    base_consumption = operation_data["base"]
+    reference_speed = operation_data["reference_speed"]
+    
+    # Speed factor: fuel increases with speed (1.5 exponent for resistance)
+    speed_factor = (operating_speed / reference_speed) ** 1.5
+    fuel_per_hectare = base_consumption * speed_factor
+    
+    return fuel_per_hectare
+
+def calculate_farm_metrics(tractor_count, operating_speed, working_hours, 
+                          implement_width, field_efficiency, fuel_cost_per_liter,
+                          operation_type):
+    """
+    Calculate farm operation metrics based on input parameters.
     
     Returns:
         Dictionary with calculated metrics for FULL DAY operation
@@ -24,10 +51,8 @@ def calculate_farm_metrics(tractor_count, operating_speed, working_hours,
     daily_capacity_per_tractor = hourly_capacity_per_tractor * working_hours
     total_daily_capacity = daily_capacity_per_tractor * tractor_count
     
-    # Fuel calculations - base consumption model
-    base_consumption = 5  # liters per hectare at 5 km/hr
-    speed_factor = (operating_speed / 5) ** 1.5
-    fuel_consumption_per_hectare = base_consumption * speed_factor
+    # Fuel calculations based on operation type
+    fuel_consumption_per_hectare = calculate_fuel_consumption(operation_type, operating_speed)
     
     # Total fuel if all tractors work the full day
     total_fuel_consumption = fuel_consumption_per_hectare * total_daily_capacity
@@ -46,7 +71,7 @@ def calculate_farm_metrics(tractor_count, operating_speed, working_hours,
 
 def find_optimal_speed(target_hectares, tractor_count, min_speed, max_speed, 
                       working_hours, implement_width, field_efficiency, 
-                      fuel_cost_per_liter, speed_increment=0.1):
+                      fuel_cost_per_liter, operation_type, speed_increment=0.1):
     """
     Find the optimal speed to complete target_hectares at minimum cost.
     All tractors work together to cover the target area.
@@ -60,8 +85,8 @@ def find_optimal_speed(target_hectares, tractor_count, min_speed, max_speed,
         total_hourly_capacity = hourly_capacity_per_tractor * tractor_count
         total_daily_capacity = total_hourly_capacity * working_hours
         
-        # Fuel consumption rate at this speed
-        fuel_per_hectare = 5 * (speed / 5) ** 1.5
+        # Fuel consumption rate at this speed for this operation
+        fuel_per_hectare = calculate_fuel_consumption(operation_type, speed)
         
         # Can we complete the target area?
         can_complete = total_daily_capacity >= target_hectares
@@ -70,7 +95,7 @@ def find_optimal_speed(target_hectares, tractor_count, min_speed, max_speed,
             # Calculate actual time and fuel needed for target area
             time_required = target_hectares / total_hourly_capacity
             
-            # FIXED: Fuel for covering target_hectares with all tractors working
+            # Fuel for covering target_hectares
             fuel_required = fuel_per_hectare * target_hectares
             total_cost = fuel_required * fuel_cost_per_liter
             cost_per_hectare = total_cost / target_hectares
@@ -126,7 +151,8 @@ def find_optimal_speed(target_hectares, tractor_count, min_speed, max_speed,
     }
 
 def calculate_tractors_for_speed(target_hectares, desired_speed, working_hours, 
-                                implement_width, field_efficiency, fuel_cost_per_liter):
+                                implement_width, field_efficiency, fuel_cost_per_liter,
+                                operation_type):
     """
     Calculate the minimum number of tractors needed to cover target area at a given speed.
     """
@@ -140,8 +166,8 @@ def calculate_tractors_for_speed(target_hectares, desired_speed, working_hours,
     total_hourly_capacity = hourly_capacity_per_tractor * tractors_needed
     time_required = target_hectares / total_hourly_capacity if total_hourly_capacity > 0 else 0
     
-    # Fuel calculation: fuel rate × total area covered
-    fuel_per_hectare = 5 * (desired_speed / 5) ** 1.5
+    # Fuel calculation based on operation type
+    fuel_per_hectare = calculate_fuel_consumption(operation_type, desired_speed)
     fuel_required = fuel_per_hectare * target_hectares
     total_fuel_cost = fuel_required * fuel_cost_per_liter
     
@@ -158,8 +184,22 @@ def calculate_tractors_for_speed(target_hectares, desired_speed, working_hours,
 # Streamlit UI
 def main():
     st.title("Duns Field Optimizer ⛽🚜🌾")
+    st.caption("Realistic fuel consumption model based on field operation types")
     
     st.sidebar.header("Farm Parameters")
+    
+    # Operation Type Selection
+    operation_type = st.sidebar.selectbox(
+        "Select Operation Type",
+        list(OPERATION_FUEL_DATA.keys()),
+        index=0
+    )
+    
+    # Show fuel consumption range for selected operation
+    op_data = OPERATION_FUEL_DATA[operation_type]
+    st.sidebar.info(f"📊 **Typical fuel range:** {op_data['range']} L/ha\n\n"
+                   f"⚙️ **Reference speed:** {op_data['reference_speed']} km/hr")
+    
     tractor_count = st.sidebar.number_input("Number of tractors", min_value=1, max_value=10, value=5)
     target_hectares = st.sidebar.number_input("Target area to cover (hectares)", min_value=1.0, max_value=100.0, value=15.0)
     working_hours = st.sidebar.number_input("Working hours per day", min_value=1.0, max_value=24.0, value=8.0)
@@ -177,13 +217,13 @@ def main():
     # Run optimization
     result = find_optimal_speed(
         target_hectares, tractor_count, min_speed, max_speed,
-        working_hours, implement_width, field_efficiency, fuel_cost
+        working_hours, implement_width, field_efficiency, fuel_cost, operation_type
     )
     
     st.header("Optimization Results")
     if result["status"] == "optimal":
         optimal = result["optimal_metrics"]
-        st.success(f"✅ Optimal solution found!")
+        st.success(f"✅ Optimal solution found for {operation_type}!")
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -197,6 +237,12 @@ def main():
             st.metric("Cost per Hectare", f"₦{optimal['cost_per_hectare']:,.2f}")
         
         st.info(f"📊 **Capacity:** {optimal['total_hourly_capacity']:.2f} ha/hr with {tractor_count} tractors")
+        
+        # Show comparison with typical range
+        expected_range = op_data['range']
+        actual_fuel = optimal['fuel_per_hectare']
+        st.caption(f"💡 Your fuel rate ({actual_fuel:.1f} L/ha) vs typical range ({expected_range} L/ha)")
+        
     else:
         st.error("❌ Cannot meet the target area with the given parameters.")
         st.warning("Try: Increasing tractors, working hours, or maximum speed.")
@@ -211,7 +257,7 @@ def main():
         desired_speed = st.number_input("Enter your desired speed (km/hr):", min_value=1.0, max_value=15.0, value=5.0)
         custom_results = calculate_tractors_for_speed(
             target_hectares, desired_speed, working_hours, 
-            implement_width, field_efficiency, fuel_cost
+            implement_width, field_efficiency, fuel_cost, operation_type
         )
         
         st.write("### Results")
@@ -226,6 +272,24 @@ def main():
             st.metric("💰 Total Cost", f"₦{custom_results['total_fuel_cost']:,.2f}")
         
         st.info(f"📊 **Combined Capacity:** {custom_results['total_hourly_capacity']:.2f} ha/hr with {custom_results['tractors_needed']} tractors")
+        
+        # Comparison with typical range
+        expected_range = op_data['range']
+        actual_fuel = custom_results['fuel_per_hectare']
+        st.caption(f"💡 Your fuel rate ({actual_fuel:.1f} L/ha) vs typical range ({expected_range} L/ha)")
+    
+    # Show operation fuel data table
+    with st.expander("📋 View All Operation Fuel Consumption Data"):
+        fuel_df = pd.DataFrame([
+            {
+                "Operation": op,
+                "Typical Range (L/ha)": data["range"],
+                "Base Consumption (L/ha)": data["base"],
+                "Reference Speed (km/hr)": data["reference_speed"]
+            }
+            for op, data in OPERATION_FUEL_DATA.items()
+        ])
+        st.dataframe(fuel_df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
